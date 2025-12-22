@@ -1,344 +1,307 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { SkipForward, Play, AlertTriangle, ArrowLeft, ArrowRight } from "lucide-react";
+import { Sparkles, Gift, Shield, Lock, Frown } from "lucide-react";
 
-export function LandingLoader({ onComplete }) {
+export function LandingLoader({ onComplete, onUnlock, onFail }) {
 	const canvasRef = useRef(null);
 	const requestRef = useRef(null);
+	const particlesRef = useRef([]);
+	const audioContextRef = useRef(null);
 
-	// Game State Refs
-	const rocketRef = useRef({ x: 0, y: 0, vx: 0, width: 40, height: 60 });
-	const asteroidsRef = useRef([]);
-	const starsRef = useRef([]);
-	const scoreRef = useRef(0);
-	const gameSpeedRef = useRef(5);
-	const frameCountRef = useRef(0);
-	const gameStateRef = useRef('playing');
-	const keysRef = useRef({ left: false, right: false });
-
-	// React State
-	const [gameState, setGameState] = useState('playing');
-	const [score, setScore] = useState(0);
+	const [isOpen, setIsOpen] = useState(false);
+	const [isShaking, setIsShaking] = useState(false);
 	const [exit, setExit] = useState(false);
-	const [showInstructions, setShowInstructions] = useState(true);
+	const [isSuccess, setIsSuccess] = useState(true);
+
+	// --- SOUND ENGINE ---
+	const playSuccessSound = () => {
+		try {
+			if (!audioContextRef.current) {
+				audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+			}
+			const ctx = audioContextRef.current;
+
+			// Pleasant Chime (Sine Waves in Harmony)
+			const playNote = (freq, delay) => {
+				const osc = ctx.createOscillator();
+				const gain = ctx.createGain();
+				osc.type = 'sine';
+				osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+
+				// Envelope
+				gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+				gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + delay + 0.05); // Sober volume
+				gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 2.0);
+
+				osc.connect(gain);
+				gain.connect(ctx.destination);
+				osc.start(ctx.currentTime + delay);
+				osc.stop(ctx.currentTime + delay + 2.0);
+			};
+
+			// C Major Arpeggio
+			playNote(523.25, 0);   // C5
+			playNote(659.25, 0.1); // E5
+			playNote(783.99, 0.2); // G5
+			playNote(1046.50, 0.3); // C6
+
+		} catch (e) {
+			console.error("Audio block", e);
+		}
+	};
+
+	const playFailureSound = () => {
+		try {
+			if (!audioContextRef.current) {
+				audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+			}
+			const ctx = audioContextRef.current;
+
+			const playNote = (freq, delay) => {
+				const osc = ctx.createOscillator();
+				const gain = ctx.createGain();
+				osc.type = 'sawtooth'; // Harsher sound for failure
+				osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+
+				gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+				gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + delay + 0.05);
+				gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.5);
+
+				osc.connect(gain);
+				gain.connect(ctx.destination);
+				osc.start(ctx.currentTime + delay);
+				osc.stop(ctx.currentTime + delay + 0.5);
+			};
+
+			// Sad descending tritone (Failure sound)
+			playNote(440, 0);      // A4
+			playNote(415.30, 0.2); // G#4
+			playNote(311.13, 0.5); // Eb4 (Tritone-ish dissonance)
+
+		} catch (e) {
+			console.error("Audio block", e);
+		}
+	};
 
 	useEffect(() => {
+		// Confetti Loop
 		const canvas = canvasRef.current;
 		const ctx = canvas.getContext('2d');
 
 		const handleResize = () => {
 			canvas.width = window.innerWidth;
 			canvas.height = window.innerHeight;
-			rocketRef.current.x = canvas.width / 2;
-			rocketRef.current.y = canvas.height - 100;
 		};
 		window.addEventListener('resize', handleResize);
 		handleResize();
 
-		// Keyboard Listeners
-		const handleKeyDown = (e) => {
-			if (e.key === 'ArrowLeft') {
-				keysRef.current.left = true;
-				setShowInstructions(false);
-			}
-			if (e.key === 'ArrowRight') {
-				keysRef.current.right = true;
-				setShowInstructions(false);
-			}
-		};
-		const handleKeyUp = (e) => {
-			if (e.key === 'ArrowLeft') keysRef.current.left = false;
-			if (e.key === 'ArrowRight') keysRef.current.right = false;
-		};
-		window.addEventListener('keydown', handleKeyDown);
-		window.addEventListener('keyup', handleKeyUp);
-
-		// Init Stars
-		starsRef.current = Array.from({ length: 100 }, () => ({
-			x: Math.random() * canvas.width,
-			y: Math.random() * canvas.height,
-			size: Math.random() * 2 + 0.5,
-			speed: Math.random() * 3 + 1
-		}));
-
-		const startGame = () => {
-			rocketRef.current.x = canvas.width / 2;
-			rocketRef.current.vx = 0;
-			asteroidsRef.current = [];
-			scoreRef.current = 0;
-			gameSpeedRef.current = 5;
-			frameCountRef.current = 0;
-			gameStateRef.current = 'playing';
-			setGameState('playing');
-			setShowInstructions(true);
-		};
-		startGame();
-
-		// --- GAME LOOP ---
 		const animate = () => {
-			if (exit) return;
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-			// Clear
-			ctx.fillStyle = '#020617';
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			if (particlesRef.current.length > 0) {
+				for (let i = particlesRef.current.length - 1; i >= 0; i--) {
+					const p = particlesRef.current[i];
+					p.x += p.vx;
+					p.y += p.vy;
+					p.vy += 0.2; // Gravity
+					p.wobble += 0.1;
 
-			// Update Stars
-			ctx.fillStyle = '#ffffff';
-			starsRef.current.forEach(star => {
-				star.y += star.speed * (gameStateRef.current === 'playing' ? 1 : 0.2);
-				if (star.y > canvas.height) {
-					star.y = 0;
-					star.x = Math.random() * canvas.width;
+					ctx.save();
+					ctx.translate(p.x, p.y);
+					ctx.rotate(p.wobble);
+					ctx.fillStyle = p.color;
+					ctx.fillRect(-5, -5, 10, 10);
+					ctx.restore();
+
+					if (p.y > canvas.height) particlesRef.current.splice(i, 1);
 				}
-				ctx.globalAlpha = Math.random() * 0.5 + 0.3;
-				ctx.beginPath();
-				ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-				ctx.fill();
-			});
-			ctx.globalAlpha = 1;
-
-			if (gameStateRef.current === 'playing') {
-				frameCountRef.current++;
-				scoreRef.current++;
-				setScore(Math.floor(scoreRef.current / 10));
-
-				// Difficulty
-				if (frameCountRef.current % 600 === 0) gameSpeedRef.current += 1;
-
-				// Controls (Rocket Movement)
-				const speed = 7;
-				const r = rocketRef.current;
-
-				// Acceleration / Friction for smoothness
-				if (keysRef.current.left) r.vx = -speed;
-				else if (keysRef.current.right) r.vx = speed;
-				else r.vx *= 0.8; // Friction
-
-				r.x += r.vx;
-
-				// Clamp
-				if (r.x < 20) r.x = 20;
-				if (r.x > canvas.width - 20) r.x = canvas.width - 20;
-
-				// Spawn Asteroids
-				if (frameCountRef.current % Math.max(20, 60 - gameSpeedRef.current * 2) === 0) {
-					const size = Math.random() * 40 + 20;
-					asteroidsRef.current.push({
-						x: Math.random() * (canvas.width - size),
-						y: -100,
-						size: size,
-						speed: gameSpeedRef.current + Math.random() * 2,
-						rotation: Math.random() * Math.PI,
-						rotSpeed: (Math.random() - 0.5) * 0.1,
-						shape: Array.from({ length: 6 }, () => Math.random() * 0.4 + 0.8)
-					});
-				}
-			}
-
-			// Render Rocket
-			const r = rocketRef.current;
-			ctx.save();
-			ctx.translate(r.x, r.y);
-			// Tilt effect
-			ctx.rotate(r.vx * 0.05);
-
-			// Flame
-			if (gameStateRef.current === 'playing') {
-				ctx.fillStyle = '#f59e0b';
-				ctx.beginPath();
-				ctx.moveTo(-8, 20);
-				ctx.lineTo(0, 40 + Math.random() * 20);
-				ctx.lineTo(8, 20);
-				ctx.fill();
-			}
-
-			// Body
-			ctx.fillStyle = '#e2e8f0';
-			ctx.beginPath();
-			ctx.moveTo(0, -30);
-			ctx.quadraticCurveTo(15, 0, 15, 20);
-			ctx.lineTo(-15, 20);
-			ctx.quadraticCurveTo(-15, 0, 0, -30);
-			ctx.fill();
-
-			// Fins
-			ctx.fillStyle = '#ef4444';
-			ctx.beginPath();
-			ctx.moveTo(-15, 10);
-			ctx.lineTo(-25, 25);
-			ctx.lineTo(-15, 20);
-			ctx.fill();
-			ctx.beginPath();
-			ctx.moveTo(15, 10);
-			ctx.lineTo(25, 25);
-			ctx.lineTo(15, 20);
-			ctx.fill();
-
-			// Window
-			ctx.fillStyle = '#0ea5e9';
-			ctx.beginPath();
-			ctx.arc(0, -5, 6, 0, Math.PI * 2);
-			ctx.fill();
-			ctx.restore();
-
-			// Asteroids
-			for (let i = asteroidsRef.current.length - 1; i >= 0; i--) {
-				const a = asteroidsRef.current[i];
-				if (gameStateRef.current === 'playing') {
-					a.y += a.speed;
-					a.rotation += a.rotSpeed;
-				}
-
-				// Draw Asteroid
-				ctx.save();
-				ctx.translate(a.x, a.y);
-				ctx.rotate(a.rotation);
-				ctx.fillStyle = '#64748b';
-				ctx.beginPath();
-				for (let j = 0; j < 6; j++) {
-					const angle = (j / 6) * Math.PI * 2;
-					const radius = a.size * a.shape[j];
-					const px = Math.cos(angle) * radius;
-					const py = Math.sin(angle) * radius;
-					if (j === 0) ctx.moveTo(px, py);
-					else ctx.lineTo(px, py);
-				}
-				ctx.closePath();
-				ctx.fill();
-				// Detail
-				ctx.fillStyle = '#475569';
-				ctx.beginPath();
-				ctx.arc(a.size * 0.3, -a.size * 0.2, a.size * 0.2, 0, Math.PI * 2);
-				ctx.fill();
-				ctx.restore();
-
-				// Collision
-				if (gameStateRef.current === 'playing') {
-					const dx = a.x - r.x;
-					const dy = a.y - r.y;
-					const dist = Math.sqrt(dx * dx + dy * dy);
-					if (dist < a.size * 0.8 + 15) {
-						gameStateRef.current = 'gameover';
-						setGameState('gameover');
-					}
-				}
-
-				if (a.y > canvas.height + 50) asteroidsRef.current.splice(i, 1);
 			}
 
 			requestRef.current = requestAnimationFrame(animate);
 		};
-
 		requestRef.current = requestAnimationFrame(animate);
 
 		return () => {
 			cancelAnimationFrame(requestRef.current);
 			window.removeEventListener('resize', handleResize);
-			window.removeEventListener('keydown', handleKeyDown);
-			window.removeEventListener('keyup', handleKeyUp);
 		};
-	}, [exit]);
+	}, []);
 
-	// Mobile Touch Support (Fallback)
-	const onTouchMove = (e) => {
-		if (gameStateRef.current !== 'playing') return;
-		if (e.touches[0]) rocketRef.current.x = e.touches[0].clientX;
-	};
+	const handleOpen = () => {
+		if (isOpen || isShaking) return;
 
-	const handleReset = () => {
-		rocketRef.current.x = window.innerWidth / 2;
-		asteroidsRef.current = [];
-		scoreRef.current = 0;
-		gameSpeedRef.current = 5;
-		frameCountRef.current = 0;
-		gameStateRef.current = 'playing';
-		setGameState('playing');
-		setShowInstructions(true);
-		setScore(0);
-	};
+		// Start shaking animation
+		setIsShaking(true);
 
-	const handleExit = () => {
-		setExit(true);
-		setTimeout(() => onComplete?.(), 1000);
+		// Determine outcome: 50% Win, 50% Lose
+		const won = Math.random() > 0.5;
+		setIsSuccess(won);
+
+		// After shaking, open the envelope
+		setTimeout(() => {
+			setIsShaking(false);
+			setIsOpen(true);
+
+			if (won) {
+				playSuccessSound();
+				// Spawn Confetti
+				for (let i = 0; i < 150; i++) {
+					particlesRef.current.push({
+						x: window.innerWidth / 2,
+						y: window.innerHeight / 2,
+						vx: (Math.random() - 0.5) * 20,
+						vy: (Math.random() - 0.5) * 25 - 5,
+						color: ['#f43f5e', '#ec4899', '#fbbf24', '#34d399', '#60a5fa'][Math.floor(Math.random() * 5)],
+						wobble: Math.random() * Math.PI * 2
+					});
+				}
+			} else {
+				playFailureSound();
+			}
+
+			// Delay completion
+			setTimeout(() => {
+				if (won) {
+					onUnlock?.();
+				} else {
+					onFail?.();
+				}
+				setExit(true);
+				setTimeout(() => {
+					onComplete?.();
+				}, 800);
+			}, 3000);
+		}, 1000); // Shake duration
 	};
 
 	return (
-		<div
-			className={`fixed inset-0 z-[100] transition-transform duration-1000 ease-in-out overflow-hidden ${exit ? 'translate-y-full' : 'translate-y-0 animate-in slide-in-from-bottom duration-1000'}`}
-			onTouchMove={onTouchMove}
-		>
-			<canvas
-				ref={canvasRef}
-				className="absolute inset-0 block"
-			/>
+		<div className={`fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center overflow-hidden transition-opacity duration-1000 ${exit ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+			<canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-50" />
 
-			{/* HUD */}
-			<div className="absolute top-8 left-8 z-10 pointer-events-none">
-				<p className="text-sm text-slate-400 font-mono">DISTANCE</p>
-				<h2 className="text-4xl font-bold text-white">{score}m</h2>
-			</div>
+			{/* Perspective Container */}
+			<div className="relative group perspective-1000">
 
-			{/* Use Arrow Keys Suggestion */}
-			{showInstructions && gameState === 'playing' && (
-				<div className="absolute top-3/4 left-0 right-0 flex justify-center items-center gap-8 pointer-events-none animate-pulse opacity-60">
-					<div className="flex flex-col items-center gap-2">
-						<div className="flex gap-2">
-							<div className="p-3 border border-white/30 rounded bg-white/5 text-white"><ArrowLeft className="w-6 h-6" /></div>
-							<div className="p-3 border border-white/30 rounded bg-white/5 text-white"><ArrowRight className="w-6 h-6" /></div>
+				{/* Instruction (Floating above) */}
+				{!isOpen && (
+					<div className="absolute -top-24 left-1/2 -translate-x-1/2 w-max text-center animate-bounce z-40 cursor-pointer pointer-events-none">
+						<div className="bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20 shadow-lg mb-2">
+							<p className="text-white text-xs font-bold tracking-widest flex items-center gap-2">
+								<Gift className="w-4 h-4 text-yellow-400" />
+								SECRET GIFT
+							</p>
 						</div>
-						<p className="text-xs text-white/50 font-mono tracking-widest">MOVE</p>
+						<span className="text-white/40 text-[10px] tracking-[0.2em]">CLICK ENVELOPE</span>
 					</div>
-				</div>
-			)}
+				)}
 
-			{/* Transparent Skip Button */}
-			<div className={`absolute top-8 right-8 z-50 transition-opacity ${gameState === 'gameover' ? 'opacity-0' : 'opacity-100'}`}>
-				<Button
-					variant="ghost"
-					onClick={handleExit}
-					className="text-white hover:bg-white/10 transition-all rounded-full px-4 h-10 border border-white/20 bg-transparent backdrop-blur-sm"
+				{/* ENVELOPE Wrapper */}
+				<div
+					onClick={handleOpen}
+					className={`relative w-[340px] h-[220px] cursor-pointer transition-transform duration-500 ease-out hover:scale-105 hover:-translate-y-2 
+                        ${isShaking ? 'animate-shake' : ''} 
+                        ${isOpen ? 'translate-y-[60px] scale-110 !cursor-default' : ''}`}
 				>
-					<span className="mr-2">Skip</span>
-					<SkipForward className="h-4 w-4" />
-				</Button>
-			</div>
+					{/* 1. Back of Envelope */}
+					<div className="absolute inset-0 bg-slate-200 rounded-sm shadow-2xl" />
 
-			{/* Game Over Screen */}
-			{gameState === 'gameover' && (
-				<div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-					<div className="bg-[#0f172a] border border-slate-700 p-8 rounded-2xl text-center space-y-6 max-w-sm w-full shadow-2xl">
-						<div className="flex justify-center">
-							<div className="bg-red-500/10 p-4 rounded-full">
-								<AlertTriangle className="w-12 h-12 text-red-500" />
-							</div>
-						</div>
+					{/* 2. The Letter/Card (Starts inside, slides up) */}
+					<div
+						className={`absolute left-4 right-4 bg-white rounded shadow-md transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] flex flex-col items-center justify-center text-center p-4 border border-slate-100
+                            ${isOpen ? '-translate-y-[240px] z-20 h-[280px]' : 'top-2 bottom-2 z-10 h-[204px]'}
+                        `}
+					>
+						{/* Card Content (Only visible when popped) */}
+						<div className={`transition-opacity duration-500 delay-300 flex flex-col items-center gap-3 ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
+							{isSuccess ? (
+								<>
+									<div className="bg-yellow-100 p-3 rounded-full">
+										<Sparkles className="w-8 h-8 text-yellow-600 animate-pulse" />
+									</div>
+									<div>
+										<h2 className="text-2xl font-black text-slate-800 leading-none">CONGRATS!</h2>
+										<p className="text-xs text-slate-400 font-bold tracking-widest mt-1">REWARD UNLOCKED</p>
+									</div>
 
-						<div className="space-y-2">
-							<h2 className="text-3xl font-black text-white">CRASHED!</h2>
-							<p className="text-slate-400">You traveled <span className="text-white font-bold">{score}m</span>.</p>
-						</div>
+									<div className="w-full h-px bg-slate-100" />
 
-						<div className="grid grid-cols-2 gap-4 pt-4">
-							<Button
-								variant="outline"
-								onClick={handleReset}
-								className="w-full bg-slate-800 border-slate-700 text-white hover:bg-slate-700 hover:text-white"
-							>
-								<Play className="w-4 h-4 mr-2" />
-								RETRY
-							</Button>
-							<Button
-								onClick={handleExit}
-								className="w-full bg-blue-600 hover:bg-blue-500 text-white"
-							>
-								CONTINUE
-							</Button>
+									<div className="space-y-1">
+										<p className="text-lg font-bold text-green-600 flex items-center justify-center gap-2">
+											<Shield className="w-5 h-5" />
+											ADMIN ACCESS
+										</p>
+										<p className="text-[10px] text-slate-400 font-mono bg-slate-50 px-2 py-1 rounded border border-slate-100 inline-block">
+											TOKEN: 2H_SESSION
+										</p>
+									</div>
+								</>
+							) : (
+								<>
+									<div className="bg-red-100 p-3 rounded-full">
+										<Frown className="w-8 h-8 text-red-600" />
+									</div>
+									<div>
+										<h2 className="text-2xl font-black text-slate-800 leading-none">FAILED</h2>
+										<p className="text-xs text-slate-400 font-bold tracking-widest mt-1">BETTER LUCK NEXT TIME</p>
+									</div>
+
+									<div className="w-full h-px bg-slate-100" />
+
+									<div className="space-y-1">
+										<p className="text-lg font-bold text-red-500 flex items-center justify-center gap-2">
+											<Lock className="w-5 h-5" />
+											LOGIN REQUIRED
+										</p>
+										<p className="text-[10px] text-slate-400 font-mono bg-slate-50 px-2 py-1 rounded border border-slate-100 inline-block">
+											TRY AGAIN LATER
+										</p>
+									</div>
+								</>
+							)}
 						</div>
 					</div>
+
+					{/* 3. Front Flaps (The "Pocket") */}
+					<div className="absolute inset-0 z-30 pointer-events-none drop-shadow-lg">
+						{/* Left Flap */}
+						<div className="absolute top-0 bottom-0 left-0 w-0 h-0 border-t-[110px] border-b-[110px] border-l-[170px] border-t-transparent border-b-transparent border-l-slate-300" />
+
+						{/* Right Flap */}
+						<div className="absolute top-0 bottom-0 right-0 w-0 h-0 border-t-[110px] border-b-[110px] border-r-[170px] border-t-transparent border-b-transparent border-r-slate-300" />
+
+						{/* Bottom Flap */}
+						<div className="absolute bottom-0 left-0 right-0 h-0 border-l-[170px] border-r-[170px] border-b-[120px] border-l-transparent border-r-transparent border-b-slate-400" />
+					</div>
+
+					{/* 4. Top Flap (The Lid) - Animated */}
+					<div
+						className={`absolute top-0 left-0 right-0 h-0 origin-top transition-all duration-700 ease-in-out
+                            border-l-[170px] border-r-[170px] border-t-[120px] 
+                            border-l-transparent border-r-transparent border-t-slate-500
+                            ${isOpen ? '[transform:rotateX(180deg)] z-10' : '[transform:rotateX(0deg)] z-40'}
+                            ${!isOpen && 'animate-breathing'} 
+                        `}
+						style={{ animation: !isOpen ? 'breathe 3s ease-in-out infinite' : 'none' }}
+					>
+					</div>
+
+					<style jsx global>{`
+                        @keyframes breathe {
+                            0%, 100% { transform: rotateX(0deg); }
+                            50% { transform: rotateX(15deg); }
+                        }
+                        @keyframes shake {
+                            0%, 100% { transform: translateX(0); }
+                            25% { transform: translateX(-5px); }
+                            50% { transform: translateX(5px); }
+                            75% { transform: translateX(-5px); }
+                        }
+                        .animate-shake {
+                            animation: shake 0.5s ease-in-out;
+                        }
+                    `}</style>
 				</div>
-			)}
+			</div>
 		</div>
 	);
 }

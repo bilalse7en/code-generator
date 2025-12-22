@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileHeader } from "@/components/mobile-header";
 import { LandingLoader } from "@/components/landing-loader";
+import { SimpleLoader } from "@/components/simple-loader";
 import { ThemeDialog } from "@/components/theme-dialog";
 import { LoginScreen } from "@/components/login-screen";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,32 +21,111 @@ import {
 
 export default function Home() {
 	const [isLoading, setIsLoading] = useState(true);
+	const [loaderVariant, setLoaderVariant] = useState("game"); // "game" | "simple"
+	const [isChecking, setIsChecking] = useState(true); // Prevent flash
 	const [activeTab, setActiveTab] = useState("course");
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [themeDialogOpen, setThemeDialogOpen] = useState(false);
 	const [user, setUser] = useState(null);
 
 	useEffect(() => {
-		// Check session storage for user
-		const storedUser = sessionStorage.getItem('user');
-		if (storedUser) {
-			const parsedUser = JSON.parse(storedUser);
-			setUser(parsedUser);
-			// Restore active tab if accessible
-			const savedTab = sessionStorage.getItem('activeTab');
-			if (savedTab && hasAccess(parsedUser.role, savedTab)) {
-				setActiveTab(savedTab);
-			} else {
-				// Default tabs based on role
-				if (parsedUser.role === 'blog_creator') setActiveTab('blog');
-				else if (parsedUser.role === 'content_creator') setActiveTab('course');
+		// 1. Check Reward Status (Priority)
+		const rewardTime = localStorage.getItem('reward_claim_time');
+		const TWO_HOURS = 2 * 60 * 60 * 1000;
+
+		let activeUser = null;
+		let shouldShowLoader = true;
+		let isRewardActive = false;
+
+		if (rewardTime) {
+			const elapsed = Date.now() - parseInt(rewardTime);
+			if (elapsed < TWO_HOURS) {
+				// Valid Reward Session - Auto Login
+				activeUser = {
+					username: 'admin',
+					role: 'admin',
+					name: 'Reward Admin (2H)',
+					loginTime: Date.now()
+				};
+				isRewardActive = true;
 			}
 		}
+
+		// 2. Check session storage for user (if not already handled by reward)
+		if (!activeUser) {
+			const storedUser = sessionStorage.getItem('user');
+			if (storedUser) {
+				activeUser = JSON.parse(storedUser);
+			}
+		}
+
+		// Apply User if found
+		if (activeUser) {
+			setUser(activeUser);
+			sessionStorage.setItem('user', JSON.stringify(activeUser));
+
+			// Restore active tab logic
+			if (!isRewardActive) { // Only restore tab for normal logins, rewards usually default or safe to default
+				const savedTab = sessionStorage.getItem('activeTab');
+				if (savedTab && hasAccess(activeUser.role, savedTab)) {
+					setActiveTab(savedTab);
+				} else {
+					if (activeUser.role === 'blog_creator') setActiveTab('blog');
+					else if (activeUser.role === 'content_creator') setActiveTab('course');
+				}
+			}
+
+			// If we have a user, we never show the game loader.
+			shouldShowLoader = false;
+		}
+
+		// 3. Check if user already attempted and failed this session
+		// Only relevant if we don't have an active user yet.
+		if (!activeUser) {
+			const attemptStatus = sessionStorage.getItem('reward_attempted');
+			// If they failed, or explicitly succeeded (though success usually implies activeUser via reward check, 
+			// unless reward expired but session remains? If reward expired, activeUser is null. 
+			// If 'success' flag is there but reward expired... we probably treat as new or expired.)
+
+			if (attemptStatus === 'failed') {
+				shouldShowLoader = false; // Skip game, show login
+			}
+			// If attemptStatus is 'success' but no activeUser (reward expired), shouldShowLoader stays true (retry? or blocked?)
+			// Assuming if reward expired, they can try again? Or should we block? 
+			// User said "expired reward - Do NOT show loader again" in previous logic.
+			// Let's stick to previous logic: if reward expired, skipLoader was true => isLoading false.
+
+			if (rewardTime && !isRewardActive) {
+				shouldShowLoader = false;
+			}
+		}
+
+		setIsLoading(shouldShowLoader);
+		setIsChecking(false);
 	}, []);
+
+	const handleRewardUnlock = () => {
+		const adminUser = {
+			username: 'admin',
+			role: 'admin',
+			name: 'Reward Admin (2H)',
+			loginTime: Date.now()
+		};
+		setUser(adminUser);
+		sessionStorage.setItem('user', JSON.stringify(adminUser));
+		localStorage.setItem('reward_claim_time', Date.now().toString());
+		sessionStorage.setItem('reward_attempted', 'success');
+	};
 
 	const handleLoaderComplete = () => {
 		setIsLoading(false);
 		sessionStorage.setItem('hasVisited', 'true');
+	};
+
+	const handleLoaderFail = () => {
+		setUser(null);
+		sessionStorage.removeItem('user');
+		sessionStorage.setItem('reward_attempted', 'failed');
 	};
 
 	const handleLogin = (loggedInUser) => {
@@ -117,10 +197,20 @@ export default function Home() {
 		}
 	};
 
+	if (isChecking) {
+		return <div className="min-h-screen bg-background" />;
+	}
+
 	return (
 		<>
-			{/* Landing Loader */}
-			{isLoading && <LandingLoader onComplete={handleLoaderComplete} />}
+			{/* Landing Loader or Simple Loader */}
+			{isLoading && (
+				loaderVariant === "game" ? (
+					<LandingLoader onComplete={handleLoaderComplete} onUnlock={handleRewardUnlock} onFail={handleLoaderFail} />
+				) : (
+					<SimpleLoader />
+				)
+			)}
 
 			{!user ? (
 				<LoginScreen onLogin={handleLogin} />
@@ -129,7 +219,7 @@ export default function Home() {
 					{/* Main App Layout */}
 					<div className={cn(
 						"min-h-screen bg-background transition-opacity duration-500",
-						isLoading ? "opacity-0" : "opacity-100"
+						isLoading && !user ? "opacity-0" : "opacity-100"
 					)}>
 						{/* Desktop Sidebar */}
 						<div className="hidden lg:block">

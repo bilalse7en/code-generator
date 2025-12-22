@@ -303,40 +303,7 @@ export function CourseGenerator() {
 						{(overviewCode || objectivesCode || syllabusCode || faqCode) && (
 							<div className="flex-1 p-4 flex flex-col h-full overflow-hidden">
 
-								{/* FAQ Interactive List */}
-								{activeView === 'faq' && courseData?.faqData?.length > 0 && (
-									<ScrollArea className="flex-1 mb-4 border rounded-md bg-muted/20 p-2 max-h-[300px]">
-										<div className="space-y-3 p-2">
-											<h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Interactive FAQ Questions</h4>
-											{courseData.faqData.map((faq, idx) => (
-												<div key={idx} className="bg-card border rounded-md p-3 shadow-sm">
-													<div className="flex justify-between items-start gap-2 mb-2">
-														<span className="text-sm font-medium text-foreground">{faq.question}</span>
-														<Button
-															size="sm"
-															variant="outline"
-															className="h-6 text-[10px] px-2 copy-btn"
-															onClick={() => copyToClipboard(faq.question)}
-														>
-															Copy Question
-														</Button>
-													</div>
-													<div className="bg-muted/50 p-2 rounded text-xs text-muted-foreground flex justify-between items-start gap-2">
-														<div className="line-clamp-3" dangerouslySetInnerHTML={{ __html: faq.answer }} />
-														<Button
-															size="sm"
-															variant="outline"
-															className="h-6 text-[10px] px-2 copy-btn"
-															onClick={() => copyToClipboard(faq.answer)}
-														>
-															Copy HTML Answer
-														</Button>
-													</div>
-												</div>
-											))}
-										</div>
-									</ScrollArea>
-								)}
+								{/* FAQ Interactive List Removed to match Blog Generator UI */}
 
 								<div className="flex items-center justify-between mb-2 mt-2">
 									<h4 className="text-sm font-semibold flex items-center gap-2">
@@ -409,7 +376,7 @@ export function CourseGenerator() {
 				onOpenChange={setPreviewOpen}
 				title={previewTitle}
 				content={previewContent}
-				data={activeView === 'faq' ? courseData?.faq : null}
+				data={activeView === 'faq' ? courseData?.faqData : null}
 			/>
 
 			{/* Toast Notification */}
