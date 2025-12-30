@@ -11,7 +11,11 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 	const [popup,setPopup]=useState(null);
 	const [exit,setExit]=useState(false);
 
-	// Game state refs (to avoid re-renders during high-freq canvas updates)
+	const [highScore,setHighScore]=useState(0);
+	const [bankedRole,setBankedRole]=useState(null);
+	const [isShaking,setIsShaking]=useState(false);
+
+	// Game state refs
 	const game=useRef({
 		player: {x: 100,y: 0,w: 50,h: 40,color: '#fbbf24'},
 		speed: 4,
@@ -22,8 +26,14 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 		frame: 0,
 		distance: 0,
 		milestones: new Set(),
-		keys: {}
+		keys: {},
+		lastBanked: null
 	});
+
+	useEffect(() => {
+		const savedHS=localStorage.getItem('runner_high_score');
+		if(savedHS) setHighScore(parseInt(savedHS));
+	},[]);
 
 	useEffect(() => {
 		const canvas=canvasRef.current;
@@ -155,6 +165,16 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 
 					if(distance2<obs.size+15) {
 						setGameState('failed');
+						setIsShaking(true);
+						setTimeout(() => setIsShaking(false),500);
+
+						// Update High Score
+						const finalDist=Math.floor(game.current.distance);
+						if(finalDist>highScore) {
+							setHighScore(finalDist);
+							localStorage.setItem('runner_high_score',finalDist.toString());
+						}
+
 						triggerFailure();
 					}
 
@@ -168,12 +188,18 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 
 				if(currentMeters>=200&&!game.current.milestones.has(200)) {
 					game.current.milestones.add(200);
+					game.current.lastBanked='content_creator';
+					setBankedRole('CONTENT ACCESS');
 					triggerPause("ORBIT REACHED!","Content Access granted for 2 hours","content_creator");
 				} else if(currentMeters>=300&&!game.current.milestones.has(300)) {
 					game.current.milestones.add(300);
+					game.current.lastBanked='blog_creator';
+					setBankedRole('BLOG & CONTENT');
 					triggerPause("GALAXY DISCOVERED!","Blog & Content access for 2 hours","blog_creator");
 				} else if(currentMeters>=500&&!game.current.milestones.has(500)) {
 					game.current.milestones.add(500);
+					game.current.lastBanked='admin';
+					setBankedRole('ADMIN ACCESS');
 					triggerPause("UNIVERSE MASTER!","Full Admin Access granted for 2 hours","admin",true);
 				}
 
@@ -258,24 +284,49 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 	};
 
 	return (
-		<div className={`fixed inset-0 z-[100] bg-slate-950 flex items-center justify-center overflow-hidden transition-opacity duration-1000 ${exit? 'opacity-0 pointer-events-none':'opacity-100'}`}>
+		<div className={`fixed inset-0 z-[100] bg-slate-950 flex items-center justify-center overflow-hidden transition-all duration-1000 ${exit? 'opacity-0 pointer-events-none':'opacity-100'} ${isShaking? 'animate-shake':''}`}>
 			<canvas ref={canvasRef} className="absolute inset-0 z-0" />
 
+			<style jsx global>{`
+				@keyframes shake {
+					0%, 100% { transform: translate(0, 0); }
+					10%, 30%, 50%, 70%, 90% { transform: translate(-10px, -10px); }
+					20%, 40%, 60%, 80% { transform: translate(10px, 10px); }
+				}
+				.animate-shake {
+					animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+				}
+			`}</style>
+
 			{/* HUD */}
-			<div className="absolute top-8 left-8 z-10 flex flex-col gap-2">
+			<div className="absolute top-8 left-8 z-10 flex flex-col gap-3">
 				<div className="flex items-center gap-4 bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-2xl">
 					<div className="bg-sky-500/20 p-2 rounded-lg">
 						<Rocket className="w-6 h-6 text-sky-400" />
 					</div>
 					<div>
-						<p className="text-[10px] font-black tracking-[0.2em] text-sky-400 uppercase">Phase: {Math.floor(distance/100)+1}</p>
+						<p className="text-[10px] font-black tracking-[0.2em] text-sky-400 uppercase">Current Flight</p>
 						<p className="text-2xl font-black text-white font-mono">{distance} <span className="text-xs text-slate-500">KM</span></p>
 					</div>
 				</div>
-				<div className="bg-red-500/10 border border-red-500/20 p-2 rounded-xl flex items-center gap-2">
-					<Zap className="w-3 h-3 text-red-500" />
-					<span className="text-[9px] font-bold text-red-400 uppercase tracking-tighter">SPEED: {game.current.speed.toFixed(1)}x</span>
+
+				<div className="flex items-center gap-4 bg-slate-900/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/5">
+					<Trophy className="w-4 h-4 text-yellow-500" />
+					<div>
+						<p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">High Score</p>
+						<p className="text-sm font-black text-white font-mono">{highScore} KM</p>
+					</div>
 				</div>
+
+				{bankedRole&&(
+					<div className="bg-green-500/10 border border-green-500/30 p-3 rounded-xl flex items-center gap-3 animate-pulse shadow-[0_0_20px_rgba(34,197,94,0.1)]">
+						<Shield className="w-5 h-5 text-green-500" />
+						<div>
+							<p className="text-[8px] font-black text-green-500 uppercase tracking-[0.2em]">BANKED SUCCESS</p>
+							<p className="text-xs font-black text-white">{bankedRole}</p>
+						</div>
+					</div>
+				)}
 			</div>
 
 			{/* Milestones */}
