@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
-import { AppSidebar } from "@/components/app-sidebar";
-import { MobileHeader } from "@/components/mobile-header";
-import { LandingLoader } from "@/components/landing-loader";
-import { SimpleLoader } from "@/components/simple-loader";
-import { ThemeDialog } from "@/components/theme-dialog";
-import { LoginScreen } from "@/components/login-screen";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { hasAccess, ROLES } from "@/lib/auth";
+import {useState,useEffect} from "react";
+import {cn} from "@/lib/utils";
+import {AppSidebar} from "@/components/app-sidebar";
+import {MobileHeader} from "@/components/mobile-header";
+import {LandingLoader} from "@/components/landing-loader";
+import {SimpleLoader} from "@/components/simple-loader";
+import {ThemeDialog} from "@/components/theme-dialog";
+import {LoginScreen} from "@/components/login-screen";
+import {ScrollArea} from "@/components/ui/scroll-area";
+import {hasAccess,ROLES} from "@/lib/auth";
 import {
 	CourseGenerator,
 	BlogGenerator,
@@ -20,138 +20,144 @@ import {
 } from "@/components/generators";
 
 export default function Home() {
-	const [isLoading, setIsLoading] = useState(true);
-	const [loaderVariant, setLoaderVariant] = useState("game"); // "game" | "simple"
-	const [isChecking, setIsChecking] = useState(true); // Prevent flash
-	const [activeTab, setActiveTab] = useState("course");
-	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-	const [themeDialogOpen, setThemeDialogOpen] = useState(false);
-	const [user, setUser] = useState(null);
+	const [isLoading,setIsLoading]=useState(true);
+	const [loaderVariant,setLoaderVariant]=useState("game"); // "game" | "simple"
+	const [isChecking,setIsChecking]=useState(true); // Prevent flash
+	const [activeTab,setActiveTab]=useState("course");
+	const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
+	const [themeDialogOpen,setThemeDialogOpen]=useState(false);
+	const [user,setUser]=useState(null);
 
 	useEffect(() => {
 		// 1. Check Reward Status (Priority)
-		const rewardTime = localStorage.getItem('reward_claim_time');
-		const TWO_HOURS = 2 * 60 * 60 * 1000;
+		const rewardTime=localStorage.getItem('reward_claim_time');
+		const TWO_HOURS=2*60*60*1000;
 
-		let activeUser = null;
-		let shouldShowLoader = true;
-		let isRewardActive = false;
+		let activeUser=null;
+		let shouldShowLoader=true;
+		let isRewardActive=false;
 
-		if (rewardTime) {
-			const elapsed = Date.now() - parseInt(rewardTime);
-			if (elapsed < TWO_HOURS) {
+		if(rewardTime) {
+			const elapsed=Date.now()-parseInt(rewardTime);
+			if(elapsed<TWO_HOURS) {
 				// Valid Reward Session - Auto Login
-				activeUser = {
+				activeUser={
 					username: 'admin',
 					role: 'admin',
 					name: 'Reward Admin (2H)',
 					loginTime: Date.now()
 				};
-				isRewardActive = true;
+				isRewardActive=true;
 			}
 		}
 
 		// 2. Check session storage for user (if not already handled by reward)
-		if (!activeUser) {
-			const storedUser = sessionStorage.getItem('user');
-			if (storedUser) {
-				activeUser = JSON.parse(storedUser);
+		if(!activeUser) {
+			const storedUser=sessionStorage.getItem('user');
+			if(storedUser) {
+				activeUser=JSON.parse(storedUser);
 			}
 		}
 
 		// Apply User if found
-		if (activeUser) {
+		if(activeUser) {
 			setUser(activeUser);
-			sessionStorage.setItem('user', JSON.stringify(activeUser));
+			sessionStorage.setItem('user',JSON.stringify(activeUser));
 
 			// Restore active tab logic
-			if (!isRewardActive) { // Only restore tab for normal logins, rewards usually default or safe to default
-				const savedTab = sessionStorage.getItem('activeTab');
-				if (savedTab && hasAccess(activeUser.role, savedTab)) {
+			if(!isRewardActive) { // Only restore tab for normal logins, rewards usually default or safe to default
+				const savedTab=sessionStorage.getItem('activeTab');
+				if(savedTab&&hasAccess(activeUser.role,savedTab)) {
 					setActiveTab(savedTab);
 				} else {
-					if (activeUser.role === 'blog_creator') setActiveTab('blog');
-					else if (activeUser.role === 'content_creator') setActiveTab('course');
+					if(activeUser.role==='blog_creator') setActiveTab('blog');
+					else if(activeUser.role==='content_creator') setActiveTab('course');
 				}
 			}
 
 			// If we have a user, we never show the game loader.
-			shouldShowLoader = false;
+			shouldShowLoader=false;
 		}
 
 		// 3. Check if user already attempted and failed this session
 		// Only relevant if we don't have an active user yet.
-		if (!activeUser) {
-			const attemptStatus = sessionStorage.getItem('reward_attempted');
+		if(!activeUser) {
+			const attemptStatus=sessionStorage.getItem('reward_attempted');
 			// If they failed, or explicitly succeeded (though success usually implies activeUser via reward check, 
 			// unless reward expired but session remains? If reward expired, activeUser is null. 
 			// If 'success' flag is there but reward expired... we probably treat as new or expired.)
 
-			if (attemptStatus === 'failed') {
-				shouldShowLoader = false; // Skip game, show login
+			if(attemptStatus==='failed') {
+				shouldShowLoader=false; // Skip game, show login
 			}
 			// If attemptStatus is 'success' but no activeUser (reward expired), shouldShowLoader stays true (retry? or blocked?)
 			// Assuming if reward expired, they can try again? Or should we block? 
 			// User said "expired reward - Do NOT show loader again" in previous logic.
 			// Let's stick to previous logic: if reward expired, skipLoader was true => isLoading false.
 
-			if (rewardTime && !isRewardActive) {
-				shouldShowLoader = false;
+			if(rewardTime&&!isRewardActive) {
+				shouldShowLoader=false;
 			}
 		}
 
 		setIsLoading(shouldShowLoader);
 		setIsChecking(false);
-	}, []);
+	},[]);
 
-	const handleRewardUnlock = () => {
-		const adminUser = {
-			username: 'admin',
-			role: 'admin',
-			name: 'Reward Admin (2H)',
+	const handleRewardUnlock=(role='admin') => {
+		const roleNames={
+			'admin': 'Reward Admin (2H)',
+			'content_creator': 'Content Reward (2H)',
+			'blog_creator': 'Blog Reward (2H)'
+		};
+
+		const rewardUser={
+			username: 'reward_user',
+			role: role,
+			name: roleNames[role]||'Reward User (2H)',
 			loginTime: Date.now()
 		};
-		setUser(adminUser);
-		sessionStorage.setItem('user', JSON.stringify(adminUser));
-		localStorage.setItem('reward_claim_time', Date.now().toString());
-		sessionStorage.setItem('reward_attempted', 'success');
+		setUser(rewardUser);
+		sessionStorage.setItem('user',JSON.stringify(rewardUser));
+		localStorage.setItem('reward_claim_time',Date.now().toString());
+		sessionStorage.setItem('reward_attempted','success');
 	};
 
-	const handleLoaderComplete = () => {
+	const handleLoaderComplete=() => {
 		setIsLoading(false);
-		sessionStorage.setItem('hasVisited', 'true');
+		sessionStorage.setItem('hasVisited','true');
 	};
 
-	const handleLoaderFail = () => {
+	const handleLoaderFail=() => {
 		setUser(null);
 		sessionStorage.removeItem('user');
-		sessionStorage.setItem('reward_attempted', 'failed');
+		sessionStorage.setItem('reward_attempted','failed');
 	};
 
-	const handleLogin = (loggedInUser) => {
+	const handleLogin=(loggedInUser) => {
 		setUser(loggedInUser);
-		sessionStorage.setItem('user', JSON.stringify(loggedInUser));
+		sessionStorage.setItem('user',JSON.stringify(loggedInUser));
 		// Set default tab based on role
-		if (loggedInUser.role === 'blog_creator') {
+		if(loggedInUser.role==='blog_creator') {
 			setActiveTab('blog');
-		} else if (loggedInUser.role === 'content_creator') {
+		} else if(loggedInUser.role==='content_creator') {
 			setActiveTab('course');
 		} else {
 			setActiveTab('course');
 		}
 	};
 
-	const handleLogout = () => {
+	const handleLogout=() => {
 		setUser(null);
 		sessionStorage.removeItem('user');
 		setIsLoading(false); // Ensure loader doesn't show again on logout
 	};
 
-	const renderActiveGenerator = () => {
-		if (!user) return null;
+	const renderActiveGenerator=() => {
+		if(!user) return null;
 
 		// Security check
-		if (!hasAccess(user.role, activeTab)) {
+		if(!hasAccess(user.role,activeTab)) {
 			return (
 				<div className="flex h-[50vh] flex-col items-center justify-center text-center">
 					<h2 className="text-2xl font-bold text-muted-foreground">Access Denied</h2>
@@ -160,66 +166,66 @@ export default function Home() {
 			);
 		}
 
-		switch (activeTab) {
-			case "course":
-				return <CourseGenerator />;
-			case "glossary":
-				return <GlossaryGenerator />;
-			case "resources":
-				return <ResourceGenerator />;
-			case "blog":
-				return <BlogGenerator />;
-			case "html-cleaner":
-				return <HTMLCleaner />;
-			case "image-converter":
-				return <ImageConverter />;
-			default:
-				return <CourseGenerator />;
+		switch(activeTab) {
+		case "course":
+			return <CourseGenerator />;
+		case "glossary":
+			return <GlossaryGenerator />;
+		case "resources":
+			return <ResourceGenerator />;
+		case "blog":
+			return <BlogGenerator />;
+		case "html-cleaner":
+			return <HTMLCleaner />;
+		case "image-converter":
+			return <ImageConverter />;
+		default:
+			return <CourseGenerator />;
 		}
 	};
 
-	const getPageTitle = () => {
-		switch (activeTab) {
-			case "course":
-				return "Web Content Generator";
-			case "glossary":
-				return "Glossary Generator";
-			case "resources":
-				return "Resource Generator";
-			case "blog":
-				return "Blog Generator";
-			case "html-cleaner":
-				return "HTML Cleaner";
-			case "image-converter":
-				return "Image Converter";
-			default:
-				return "Course Content Generator";
+	const getPageTitle=() => {
+		switch(activeTab) {
+		case "course":
+			return "Web Content Generator";
+		case "glossary":
+			return "Glossary Generator";
+		case "resources":
+			return "Resource Generator";
+		case "blog":
+			return "Blog Generator";
+		case "html-cleaner":
+			return "HTML Cleaner";
+		case "image-converter":
+			return "Image Converter";
+		default:
+			return "Course Content Generator";
 		}
 	};
 
-	if (isChecking) {
+	if(isChecking) {
 		return <div className="min-h-screen bg-background" />;
 	}
 
 	return (
 		<>
 			{/* Landing Loader or Simple Loader */}
-			{isLoading && (
-				loaderVariant === "game" ? (
+			{isLoading&&(
+				loaderVariant==="game"? (
 					<LandingLoader onComplete={handleLoaderComplete} onUnlock={handleRewardUnlock} onFail={handleLoaderFail} />
-				) : (
+				):(
 					<SimpleLoader />
 				)
 			)}
 
-			{!user ? (
+			{!user? (
 				<LoginScreen onLogin={handleLogin} />
-			) : (
+			):(
 				<>
 					{/* Main App Layout */}
 					<div className={cn(
 						"min-h-screen bg-background transition-opacity duration-500",
-						isLoading && !user ? "opacity-0" : "opacity-100"
+						isLoading&&!user? "opacity-0":"opacity-100"
 					)}>
 						{/* Desktop Sidebar */}
 						<div className="hidden lg:block">
@@ -245,7 +251,7 @@ export default function Home() {
 						<main
 							className={cn(
 								"min-h-screen transition-all duration-300 lg:pt-0",
-								sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
+								sidebarCollapsed? "lg:ml-16":"lg:ml-64"
 							)}
 						>
 							<ScrollArea className="h-screen">

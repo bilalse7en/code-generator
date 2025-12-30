@@ -489,6 +489,77 @@
 	.sidebar-wrapper {
 		box-shadow: 5px 0 20px rgba(0, 0, 0, 0.3);
 	}
+
+	/* Generated Course Content Styles */
+	.sbox {
+		padding: 1.25rem;
+		margin-bottom: 0;
+		background: #fff;
+		border: 1px solid #e9ecef;
+		color: black !important;
+	}
+
+	.dark .sbox {
+		background: #1e293b;
+		border-color: #334155;
+		color: #f8fafc;
+	}
+
+	.faq-section {
+		padding: 1rem 0;
+	}
+
+	.faq-item {
+		padding: 1rem 0;
+	}
+
+	.faq-question {
+		font-weight: 700;
+		font-size: 1.1rem;
+		margin-bottom: 0.75rem;
+		color: #ffcd05;
+	}
+
+	.faq-answer {
+		line-height: 1.6;
+	}
+
+	.font-poppins {
+		font-family: 'Poppins', 'Inter', sans-serif;
+	}
+
+	/* Preview Section Specialized sbox styles */
+	.preview-container .sbox:nth-child(1) {
+		display: flex;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		align-items: center;
+	}
+
+	.preview-container .sbox {
+		margin: 10px 0;
+		background: var(--card-bg, #fff);
+		padding: 10px 18px;
+		box-shadow: 0 0 0px 1px var(--border-color, #e9ecef), 0 3px 1px 0 var(--shadow-color, rgba(0, 0, 0, 0.05));
+		border-radius: 10px;
+		border: 1px solid var(--border-color, #e9ecef);
+		transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+		transform: translateY(0) translateX(0) scale(1);
+		position: relative;
+		z-index: 1;
+		color: var(--text-primary, inherit);
+	}
+
+	.preview-container .sbox:hover {
+		opacity: 1;
+		filter: brightness(1.02) blur(0px);
+		transform: translateY(-3px) translateX(2px) scale(1);
+		box-shadow: 0 5px 10px rgba(255, 205, 5, 0.25),
+			0 3px 7px var(--shadow-color, rgba(0, 0, 0, 0.1)),
+			0 0 0 0px rgba(255, 205, 5, 0.4),
+			inset 0 0px 11px rgba(255, 255, 255, 0.1);
+		z-index: 100;
+	}
 }
 
 /* Scrollbar Styling */

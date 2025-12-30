@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import {useState,useRef} from "react";
+import {Card,CardContent,CardHeader,CardTitle} from "@/components/ui/card";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
+import {Progress} from "@/components/ui/progress";
+import {ScrollArea} from "@/components/ui/scroll-area";
 import {
 	FileText,
 	Upload,
@@ -23,47 +23,47 @@ import {
 	generateSyllabusCode,
 	generateFAQCode
 } from "@/lib/docx-processor";
-import { PreviewDrawer } from "@/components/preview-drawer";
+import {PreviewDrawer} from "@/components/preview-drawer";
 
 export function CourseGenerator() {
-	const [courseName, setCourseName] = useState("");
-	const [file, setFile] = useState(null);
-	const [isProcessing, setIsProcessing] = useState(false);
-	const [progress, setProgress] = useState(0);
-	const [progressText, setProgressText] = useState("");
-	const [courseData, setCourseData] = useState(null);
-	const [notification, setNotification] = useState(null);
+	const [courseName,setCourseName]=useState("");
+	const [file,setFile]=useState(null);
+	const [isProcessing,setIsProcessing]=useState(false);
+	const [progress,setProgress]=useState(0);
+	const [progressText,setProgressText]=useState("");
+	const [courseData,setCourseData]=useState(null);
+	const [notification,setNotification]=useState(null);
 
 	// Generated Code States
-	const [overviewCode, setOverviewCode] = useState("");
-	const [objectivesCode, setObjectivesCode] = useState("");
-	const [syllabusCode, setSyllabusCode] = useState("");
-	const [faqCode, setFaqCode] = useState("");
+	const [overviewCode,setOverviewCode]=useState("");
+	const [objectivesCode,setObjectivesCode]=useState("");
+	const [syllabusCode,setSyllabusCode]=useState("");
+	const [faqCode,setFaqCode]=useState("");
 
 	// View State
-	const [activeView, setActiveView] = useState("overview"); // overview, objectives, syllabus, faq
-	const fileInputRef = useRef(null);
+	const [activeView,setActiveView]=useState("overview"); // overview, objectives, syllabus, faq
+	const fileInputRef=useRef(null);
 
 	// Preview Drawer State
-	const [previewOpen, setPreviewOpen] = useState(false);
-	const [previewContent, setPreviewContent] = useState("");
-	const [previewTitle, setPreviewTitle] = useState("");
+	const [previewOpen,setPreviewOpen]=useState(false);
+	const [previewContent,setPreviewContent]=useState("");
+	const [previewTitle,setPreviewTitle]=useState("");
 
-	const showNotification = (message, type = "success") => {
-		setNotification({ message, type });
-		setTimeout(() => setNotification(null), 3000);
+	const showNotification=(message,type="success") => {
+		setNotification({message,type});
+		setTimeout(() => setNotification(null),3000);
 	};
 
-	const handleFileChange = (e) => {
-		if (e.target.files && e.target.files[0]) {
+	const handleFileChange=(e) => {
+		if(e.target.files&&e.target.files[0]) {
 			setFile(e.target.files[0]);
-			showNotification(`Selected: ${e.target.files[0].name}`, "info");
+			showNotification(`Selected: ${e.target.files[0].name}`,"info");
 		}
 	};
 
-	const handleUpload = async () => {
-		if (!file) return showNotification("Please select a file to upload.", "warning");
-		if (!courseName) return showNotification("Please enter a course name.", "warning");
+	const handleUpload=async () => {
+		if(!file) return showNotification("Please select a file to upload.","warning");
+		if(!courseName) return showNotification("Please enter a course name.","warning");
 
 		setIsProcessing(true);
 		setProgress(10);
@@ -71,78 +71,78 @@ export function CourseGenerator() {
 
 		try {
 			// Simulate progress
-			const interval = setInterval(() => {
-				setProgress(p => Math.min(p + 10, 90));
-			}, 200);
+			const interval=setInterval(() => {
+				setProgress(p => Math.min(p+10,90));
+			},200);
 
-			const data = await processCourseFile(file, courseName);
+			const data=await processCourseFile(file,courseName);
 
 			clearInterval(interval);
 			setProgress(100);
 			setProgressText("Course content extracted successfully!");
 			setCourseData(data);
-			showNotification("Course content extracted successfully!", "success");
+			showNotification("Course content extracted successfully!","success");
 
 			setTimeout(() => {
 				setIsProcessing(false);
 				setProgress(0);
 				setProgressText("");
-			}, 2000);
+			},2000);
 
-		} catch (error) {
+		} catch(error) {
 			setIsProcessing(false);
-			showNotification("Error extractng content: " + error.message, "error");
+			showNotification("Error extractng content: "+error.message,"error");
 		}
 	};
 
-	const handleGenerateOverview = () => {
-		if (!courseData?.fileProcessed) return showNotification("Please upload and process a DOCX file first.", "warning");
-		const code = generateOverviewCode(courseData);
+	const handleGenerateOverview=() => {
+		if(!courseData?.fileProcessed) return showNotification("Please upload and process a DOCX file first.","warning");
+		const code=generateOverviewCode(courseData);
 		setOverviewCode(code);
 		setActiveView("overview");
 		showNotification("Overview code generated successfully!");
 	};
 
-	const handleGenerateObjectives = () => {
-		if (!courseData?.fileProcessed) return showNotification("Please upload and process a DOCX file first.", "warning");
-		const code = generateCourseObjectivesCode(courseData);
+	const handleGenerateObjectives=() => {
+		if(!courseData?.fileProcessed) return showNotification("Please upload and process a DOCX file first.","warning");
+		const code=generateCourseObjectivesCode(courseData);
 		setObjectivesCode(code);
 		setActiveView("objectives");
 		showNotification("Course Objectives code generated successfully!");
 	};
 
-	const handleGenerateSyllabus = () => {
-		if (!courseData?.fileProcessed) return showNotification("Please upload and process a DOCX file first.", "warning");
-		const code = generateSyllabusCode(courseData);
+	const handleGenerateSyllabus=() => {
+		if(!courseData?.fileProcessed) return showNotification("Please upload and process a DOCX file first.","warning");
+		const code=generateSyllabusCode(courseData);
 		setSyllabusCode(code);
 		setActiveView("syllabus");
 		showNotification("Syllabus code generated successfully!");
 	};
 
-	const handleGenerateFAQ = () => {
-		if (!courseData?.fileProcessed) return showNotification("Please upload and process a DOCX file first.", "warning");
-		const code = generateFAQCode(courseData);
+	const handleGenerateFAQ=() => {
+		if(!courseData?.fileProcessed) return showNotification("Please upload and process a DOCX file first.","warning");
+		const code=generateFAQCode(courseData);
 		setFaqCode(code);
 		setActiveView("faq");
 		showNotification("FAQ code generated successfully!");
 	};
 
-	const downloadDemoFile = () => {
-		const link = document.createElement('a');
-		link.href = 'https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765354092/Course_Sample_File.docx';
-		link.download = 'Course_Sample_File.docx';
+	const downloadDemoFile=() => {
+		const link=document.createElement('a');
+		link.href='https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765354187/demo-file-of-website-content-for-3-section.docx';
+		link.download='demo-file-of-website-content-for-3-section.docx';
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
 	};
 
-	const openPreview = (content, title) => {
+	const openPreview=(content,title) => {
 		setPreviewContent(content);
 		setPreviewTitle(title);
 		setPreviewOpen(true);
 	};
 
-	const copyToClipboard = (text) => {
+	const copyToClipboard=(text) => {
 		navigator.clipboard.writeText(text);
 		showNotification("Copied to clipboard!");
 	};
@@ -198,14 +198,14 @@ export function CourseGenerator() {
 									className="hidden"
 								/>
 								<div className="text-xs text-muted-foreground mt-1 text-center">
-									{file ? `Selected: ${file.name}` : "No file selected"}
+									{file? `Selected: ${file.name}`:"No file selected"}
 								</div>
 							</div>
 						</CardContent>
 					</Card>
 
 					{/* Progress Card */}
-					{isProcessing && (
+					{isProcessing&&(
 						<Card className="card">
 							<CardContent className="card-body pt-6">
 								<Progress value={progress} className="progress-bar mb-2" />
@@ -250,46 +250,46 @@ export function CourseGenerator() {
 					<div className="card bg-card border rounded-lg shadow-sm min-h-[600px] flex flex-col overflow-hidden">
 
 						{/* Selector Buttons */}
-						{(overviewCode || objectivesCode || syllabusCode || faqCode) ? (
+						{(overviewCode||objectivesCode||syllabusCode||faqCode)? (
 							<div className="flex flex-wrap gap-1 p-2 border-b bg-muted/30">
 								<button
 									onClick={() => setActiveView("overview")}
-									className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView === 'overview'
+									className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView==='overview'
 										? 'bg-primary text-primary-foreground shadow-sm'
-										: 'hover:bg-accent text-muted-foreground'
+										:'hover:bg-accent text-muted-foreground'
 										}`}
 								>
 									Overview
 								</button>
 								<button
 									onClick={() => setActiveView("objectives")}
-									className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView === 'objectives'
+									className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView==='objectives'
 										? 'bg-primary text-primary-foreground shadow-sm'
-										: 'hover:bg-accent text-muted-foreground'
+										:'hover:bg-accent text-muted-foreground'
 										}`}
 								>
 									Objectives
 								</button>
 								<button
 									onClick={() => setActiveView("syllabus")}
-									className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView === 'syllabus'
+									className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView==='syllabus'
 										? 'bg-primary text-primary-foreground shadow-sm'
-										: 'hover:bg-accent text-muted-foreground'
+										:'hover:bg-accent text-muted-foreground'
 										}`}
 								>
 									Syllabus
 								</button>
 								<button
 									onClick={() => setActiveView("faq")}
-									className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView === 'faq'
+									className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView==='faq'
 										? 'bg-primary text-primary-foreground shadow-sm'
-										: 'hover:bg-accent text-muted-foreground'
+										:'hover:bg-accent text-muted-foreground'
 										}`}
 								>
 									FAQ
 								</button>
 							</div>
-						) : (
+						):(
 							<div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-10">
 								<Code className="h-12 w-12 mb-4 opacity-20" />
 								<h4 className="text-xl font-medium mb-2">No Code Generated Yet</h4>
@@ -300,7 +300,7 @@ export function CourseGenerator() {
 						)}
 
 						{/* Textarea Content */}
-						{(overviewCode || objectivesCode || syllabusCode || faqCode) && (
+						{(overviewCode||objectivesCode||syllabusCode||faqCode)&&(
 							<div className="flex-1 p-4 flex flex-col h-full overflow-hidden">
 
 								{/* FAQ Interactive List Removed to match Blog Generator UI */}
@@ -308,10 +308,10 @@ export function CourseGenerator() {
 								<div className="flex items-center justify-between mb-2 mt-2">
 									<h4 className="text-sm font-semibold flex items-center gap-2">
 										<Code className="h-4 w-4" />
-										{activeView === 'overview' && "Overview Code"}
-										{activeView === 'objectives' && "Course Objectives Code"}
-										{activeView === 'syllabus' && "Syllabus Code"}
-										{activeView === 'faq' && "Full FAQ HTML Code"}
+										{activeView==='overview'&&"Overview Code"}
+										{activeView==='objectives'&&"Course Objectives Code"}
+										{activeView==='syllabus'&&"Syllabus Code"}
+										{activeView==='faq'&&"Full FAQ HTML Code"}
 									</h4>
 									<div className="flex gap-2">
 										<Button
@@ -319,19 +319,19 @@ export function CourseGenerator() {
 											size="sm"
 											className="preview-icon-btn"
 											onClick={() => {
-												const content = {
+												const content={
 													'overview': overviewCode,
 													'objectives': objectivesCode,
 													'syllabus': syllabusCode,
 													'faq': faqCode
 												}[activeView];
-												const title = {
+												const title={
 													'overview': 'Overview',
 													'objectives': 'Course Objectives',
 													'syllabus': 'Syllabus',
 													'faq': 'FAQ'
 												}[activeView];
-												openPreview(content, title);
+												openPreview(content,title);
 											}}
 										>
 											<Eye className="h-3 w-3 mr-1" /> Preview
@@ -340,7 +340,7 @@ export function CourseGenerator() {
 											size="sm"
 											className="copy-btn"
 											onClick={() => {
-												const content = {
+												const content={
 													'overview': overviewCode,
 													'objectives': objectivesCode,
 													'syllabus': syllabusCode,
@@ -357,10 +357,10 @@ export function CourseGenerator() {
 								<textarea
 									className="flex-1 w-full bg-muted/50 border rounded-md p-4 font-mono text-xs resize-none focus:outline-ring code-editor"
 									value={
-										activeView === 'overview' ? overviewCode :
-											activeView === 'objectives' ? objectivesCode :
-												activeView === 'syllabus' ? syllabusCode :
-													activeView === 'faq' ? faqCode : ""
+										activeView==='overview'? overviewCode:
+											activeView==='objectives'? objectivesCode:
+												activeView==='syllabus'? syllabusCode:
+													activeView==='faq'? faqCode:""
 									}
 									readOnly
 									placeholder="Code will appear here..."
@@ -376,20 +376,20 @@ export function CourseGenerator() {
 				onOpenChange={setPreviewOpen}
 				title={previewTitle}
 				content={previewContent}
-				data={activeView === 'faq' ? courseData?.faqData : null}
+				data={activeView==='faq'? courseData?.faqData:null}
 			/>
 
 			{/* Toast Notification */}
-			{notification && (
-				<div className={`notification fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg ${notification.type === 'error'
+			{notification&&(
+				<div className={`notification fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg ${notification.type==='error'
 					? 'bg-destructive text-destructive-foreground'
-					: notification.type === 'warning'
+					:notification.type==='warning'
 						? 'bg-warning text-warning-foreground'
-						: 'text-foreground'
+						:'text-foreground'
 					}`}>
-					{notification.type === 'error' ? (
+					{notification.type==='error'? (
 						<AlertCircle className="h-5 w-5" />
-					) : (
+					):(
 						<CheckCircle2 className="h-5 w-5" />
 					)}
 					{notification.message}
