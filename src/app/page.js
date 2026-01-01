@@ -6,6 +6,7 @@ import {AppSidebar} from "@/components/app-sidebar";
 import {MobileHeader} from "@/components/mobile-header";
 import {LandingLoader} from "@/components/landing-loader";
 import {SimpleLoader} from "@/components/simple-loader";
+import {AntigravityExperience} from "@/components/antigravity-experience";
 import {ThemeDialog} from "@/components/theme-dialog";
 import {LoginScreen} from "@/components/login-screen";
 import {ScrollArea} from "@/components/ui/scroll-area";
@@ -21,7 +22,7 @@ import {
 
 export default function Home() {
 	const [isLoading,setIsLoading]=useState(true);
-	const [loaderVariant,setLoaderVariant]=useState("game"); // "game" | "simple"
+	const [loaderVariant,setLoaderVariant]=useState("game"); // "game" | "simple" | "antigravity"
 	const [isChecking,setIsChecking]=useState(true); // Prevent flash
 	const [activeTab,setActiveTab]=useState("course");
 	const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
@@ -213,6 +214,8 @@ export default function Home() {
 			{isLoading&&(
 				loaderVariant==="game"? (
 					<LandingLoader onComplete={handleLoaderComplete} onUnlock={handleRewardUnlock} onFail={handleLoaderFail} />
+				):loaderVariant==="antigravity"? (
+					<AntigravityExperience onComplete={handleLoaderComplete} />
 				):(
 					<SimpleLoader />
 				)
@@ -224,7 +227,7 @@ export default function Home() {
 				<>
 					{/* Main App Layout */}
 					<div className={cn(
-						"min-h-screen bg-background transition-opacity duration-500",
+						"min-h-screen bg-transparent transition-opacity duration-500",
 						isLoading&&!user? "opacity-0":"opacity-100"
 					)}>
 						{/* Desktop Sidebar */}
@@ -256,24 +259,24 @@ export default function Home() {
 						>
 							<ScrollArea className="h-screen">
 								{/* Hero Section */}
-								<div className="border-b border-border bg-gradient-to-b from-muted/50 to-background py-12 lg:py-16 hero-section">
+								<div className="border-b border-border bg-gradient-to-b from-muted/50 to-transparent py-12 lg:py-16 hero-section animate-in-card">
 									<div className="container mx-auto px-4 text-center">
 										<img
 											src="https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif"
 											alt="Content Suite Logo"
-											className="mx-auto mb-6 h-24 w-24 rounded-full shadow-lg"
+											className="mx-auto mb-6 h-24 w-24 rounded-full shadow-lg ring-4 ring-primary/20"
 										/>
-										<h1 id="mainTitle" className="mb-4 text-3xl font-bold tracking-tight bg-gradient-to-r from-primary via-blue-500 to-cyan-500 bg-clip-text text-transparent lg:text-4xl">
+										<h1 id="mainTitle" className="mb-4 text-3xl font-bold tracking-tight bg-gradient-to-r from-primary via-blue-500 to-cyan-500 bg-clip-text text-transparent lg:text-4xl drop-shadow-[0_0_15px_rgba(34,197,94,0.3)]">
 											{getPageTitle()}
 										</h1>
-										<p className="mx-auto max-w-2xl text-muted-foreground">
+										<p className="mx-auto max-w-2xl text-muted-foreground font-medium">
 											Extract Overview, Syllabus, FAQs, Glossary, Resources and Blog Content from your documents
 										</p>
 									</div>
 								</div>
 
 								{/* Content Area */}
-								<div className="container mx-auto px-4 py-8">
+								<div className="container mx-auto px-4 py-8 animate-in-card [animation-delay:200ms]">
 									{renderActiveGenerator()}
 								</div>
 							</ScrollArea>

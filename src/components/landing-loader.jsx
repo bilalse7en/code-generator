@@ -123,13 +123,15 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 				// Spawn frequency increases with difficulty
 				const spawnRate=Math.max(20,60-Math.floor(game.current.distance/100)*10);
 				if(game.current.frame%spawnRate===0) {
+					const colors=['#0ea5e9','#22c55e','#ef4444','#a855f7','#f97316'];
 					game.current.obstacles.push({
 						x: canvas.width,
 						y: Math.random()*(canvas.height-100)+50,
-						size: Math.random()*20+15, // Ball size
+						size: Math.random()*20+15,
 						speed: (Math.random()*3+4)*difficultyMultiplier,
 						rotation: 0,
-						rotateSpeed: (Math.random()-0.5)*0.1
+						rotateSpeed: (Math.random()-0.5)*0.1,
+						color: colors[Math.floor(Math.random()*colors.length)]
 					});
 				}
 
@@ -137,24 +139,36 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 					obs.x-=obs.speed;
 					obs.rotation+=obs.rotateSpeed;
 
-					// Draw Space Ball
+					// Draw Glowing Bubble
 					ctx.save();
 					ctx.translate(obs.x,obs.y);
-					ctx.rotate(obs.rotation);
 
-					// Ball Body
-					const ballGrad=ctx.createRadialGradient(-obs.size/3,-obs.size/3,2,0,0,obs.size);
-					ballGrad.addColorStop(0,'#64748b');
-					ballGrad.addColorStop(1,'#0f172a');
-					ctx.fillStyle=ballGrad;
+					// Bubble Body with Glass Effect
+					const bubbleGrad=ctx.createRadialGradient(-obs.size/2,-obs.size/2,2,0,0,obs.size);
+					const bubbleColor=obs.color||'#0ea5e9';
+					bubbleGrad.addColorStop(0,'rgba(255,255,255,0.8)');
+					bubbleGrad.addColorStop(0.2,bubbleColor);
+					bubbleGrad.addColorStop(1,'rgba(0,0,0,0.1)');
+
+					ctx.fillStyle=bubbleGrad;
+					ctx.globalAlpha=0.6;
 					ctx.beginPath();
 					ctx.arc(0,0,obs.size,0,Math.PI*2);
 					ctx.fill();
 
-					// Cracks/Detail on ball
-					ctx.strokeStyle='#334155';
+					// Specular Highlight
+					ctx.fillStyle='rgba(255,255,255,0.4)';
+					ctx.beginPath();
+					ctx.arc(-obs.size/3,-obs.size/3,obs.size/4,0,Math.PI*2);
+					ctx.fill();
+
+					// Outer Ring
+					ctx.strokeStyle=bubbleColor;
 					ctx.lineWidth=2;
-					ctx.beginPath(); ctx.moveTo(-obs.size/2,0); ctx.lineTo(obs.size/2,0); ctx.stroke();
+					ctx.globalAlpha=0.8;
+					ctx.beginPath();
+					ctx.arc(0,0,obs.size,0,Math.PI*2);
+					ctx.stroke();
 
 					ctx.restore();
 
@@ -209,13 +223,12 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 		};
 
 		const triggerPause=(title,content,role,isFinal=false) => {
-			setGameState('paused');
 			setPopup({type: 'success',title,content,accessRole: role,isFinal});
 		};
 
 		const triggerFailure=() => {
 			let role=null;
-			let msg="You touched a space debris ball. Access denied.";
+			let msg="You popped a bubble. Access denied.";
 			const currentDist=Math.floor(game.current.distance);
 
 			if(currentDist>=500) {
@@ -349,50 +362,62 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 				</div>
 			</div>
 
-			{/* Popups */}
+			{/* Non-intrusive Transparent Notifications */}
 			{popup&&(
-				<div className="z-20 absolute inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-6">
-					<div className={`relative group max-w-sm w-full transition-transform duration-500 ${popup.type==='failure'? 'scale-110':''}`}>
+				<div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 w-full max-w-md animate-in slide-in-from-bottom-10 duration-500">
+					<div className={`relative overflow-hidden rounded-3xl backdrop-blur-xl border border-white/10 p-6 shadow-2xl transition-all ${popup.type==='failure'? 'bg-red-500/5':'bg-yellow-500/5'}`}>
+						{/* Animated Background Glow - Very Subtle */}
+						<div className={`absolute -inset-20 blur-3xl opacity-10 animate-pulse ${popup.type==='failure'? 'bg-red-600':'bg-yellow-400'}`}></div>
 
-						{/* Glow effect */}
-						<div className={`absolute -inset-1 rounded-[2.5rem] blur opacity-40 transition duration-1000 ${popup.type==='failure'? 'bg-red-600':'bg-yellow-500'}`}></div>
-
-						<div className="relative bg-slate-900 rounded-[2.5rem] p-10 text-center border border-white/10 shadow-2xl animate-in zoom-in duration-300">
-							<div className={`w-24 h-24 rounded-3xl rotate-12 flex items-center justify-center mx-auto mb-8 shadow-2xl ${popup.type==='failure'? 'bg-red-500':'bg-yellow-500'}`}>
-								{popup.type==='failure'? <AlertTriangle className="w-12 h-12 text-white -rotate-12" />:<Shield className="w-12 h-12 text-slate-900 -rotate-12" />}
+						<div className="relative flex items-center gap-5">
+							<div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${popup.type==='failure'? 'bg-red-500/80 outline outline-1 outline-white/20':'bg-yellow-500/80 outline outline-1 outline-white/20'}`}>
+								{popup.type==='failure'? <AlertTriangle className="w-8 h-8 text-white" />:<Shield className="w-8 h-8 text-slate-900" />}
 							</div>
 
-							<h2 className={`text-4xl font-black mb-4 tracking-tighter leading-tight italic uppercase ${popup.type==='failure'? 'text-red-500':'text-white'}`}>
-								{popup.title}
-							</h2>
+							<div className="flex-1 min-w-0">
+								<h3 className={`text-xl font-black tracking-tight leading-none mb-1 uppercase italic ${popup.type==='failure'? 'text-red-500':'text-white'}`}>
+									{popup.type==='failure'? 'GAME OVER':popup.title}
+								</h3>
+								<p className="text-slate-300 text-sm font-medium line-clamp-2">
+									{popup.content}
+								</p>
+							</div>
 
-							<p className="text-slate-400 font-medium mb-10 leading-relaxed text-lg">
-								{popup.content}
-							</p>
-
-							{popup.isFinal? (
-								<div className="flex flex-col gap-3">
-									<button
-										onClick={handleClaim}
-										className="w-full bg-white text-slate-950 font-black py-4 rounded-xl transition-all hover:bg-yellow-400 active:scale-95 text-lg uppercase tracking-widest shadow-lg"
-									>
-										CLAIM & DASHBOARD
-									</button>
-									<button
-										onClick={handleContinuePlaying}
-										className="w-full bg-slate-800 text-white font-black py-4 rounded-xl transition-all hover:bg-slate-700 active:scale-95 text-sm uppercase tracking-[0.2em] border border-white/10"
-									>
-										CONTINUE FOR HIGH SCORE
-									</button>
-								</div>
-							):(
-								<button
-									onClick={handleContinue}
-									className={`w-full font-black py-5 rounded-2xl transition-all active:scale-95 text-xl uppercase tracking-widest ${popup.type==='failure'? (popup.accessRole? 'bg-white text-green-600 hover:bg-green-50':'bg-white text-red-600 hover:bg-red-50'):'bg-white text-slate-950 hover:bg-yellow-400'}`}
-								>
-									{popup.type==='failure'? (popup.accessRole? "CLAIM ACCESS & ENTER":"BACK TO LOGIN"):"CONTINUE MISSION"}
-								</button>
-							)}
+							<div className="flex flex-col gap-2">
+								{popup.type==='failure'? (
+									<div className="flex flex-col gap-2">
+										<button
+											onClick={handleContinue}
+											className="whitespace-nowrap bg-white text-slate-950 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-wider hover:bg-red-50 transition-colors shadow-lg"
+										>
+											{popup.accessRole? "CLAIM REWARD":"BACK TO LOGIN"}
+										</button>
+										<button
+											onClick={() => window.location.reload()}
+											className="whitespace-nowrap bg-white/10 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
+										>
+											RETRY MISSION
+										</button>
+									</div>
+								):(
+									<div className="flex flex-col gap-2">
+										<button
+											onClick={handleClaim}
+											className="whitespace-nowrap bg-white text-slate-950 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-wider hover:bg-yellow-400 transition-colors shadow-lg"
+										>
+											CLAIM & ENTER
+										</button>
+										{!popup.isFinal&&(
+											<button
+												onClick={handleContinuePlaying}
+												className="whitespace-nowrap bg-white/10 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
+											>
+												CONTINUE
+											</button>
+										)}
+									</div>
+								)}
+							</div>
 						</div>
 					</div>
 				</div>

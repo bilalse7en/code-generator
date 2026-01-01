@@ -1,23 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { authenticate } from "@/lib/auth";
-import { Lock } from "lucide-react";
+import {useState} from "react";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
+import {Card,CardContent,CardDescription,CardFooter,CardHeader,CardTitle} from "@/components/ui/card";
+import {authenticate} from "@/lib/auth";
+import {Lock} from "lucide-react";
 
-export function LoginScreen({ onLogin }) {
-	const [username, setUsername] = useState("");
-	const [password, setPassword] = useState("");
-	const [error, setError] = useState("");
+export function LoginScreen({onLogin}) {
+	const [username,setUsername]=useState("");
+	const [password,setPassword]=useState("");
+	const [error,setError]=useState("");
 
-	const handleSubmit = (e) => {
+	const handleSubmit=(e) => {
 		e.preventDefault();
 		setError("");
-		const user = authenticate(username, password);
-		if (user) {
+		const user=authenticate(username,password);
+		if(user) {
 			onLogin(user);
 		} else {
 			setError("Invalid credentials. Please try again.");
@@ -25,8 +25,8 @@ export function LoginScreen({ onLogin }) {
 	};
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 p-4 animate-in slide-in-from-top duration-1000">
-			<Card className="w-full max-w-md">
+		<div className="flex min-h-screen items-center justify-center p-4">
+			<Card className="w-full max-w-md animate-in-card">
 				<CardHeader className="space-y-1">
 					<div className="flex justify-center mb-4">
 						<div className="rounded-full bg-primary/10 p-3">
@@ -61,7 +61,7 @@ export function LoginScreen({ onLogin }) {
 								onChange={(e) => setPassword(e.target.value)}
 							/>
 						</div>
-						{error && (
+						{error&&(
 							<div className="text-sm text-red-500 font-medium text-center">
 								{error}
 							</div>
